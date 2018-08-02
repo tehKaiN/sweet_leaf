@@ -1,8 +1,26 @@
 # Sweet Leaf firmware
 
+## Directory structure
+
+It's a mess, because I wanted the project to be regenerate'able from CubeMX.
+
+- `Core` and `Drivers` directories contain Cube-specific files. Who the hell
+  uses uppercase in folders anyway? Most of those files are git-ignored.
+- True project files reside in `sweet_leaf` directory.
+
 ## Build instructions
 
-TBD
+CubeMX generates Makefile but it can't be reliably edited when regenerating
+project. This project uses tupfile instead.
+
+Prerequisites:
+
+- ARM GCC
+- STM32 CubeMX (needs Java RE)
+- [tup](http://gittup.org/tup/), type `tup init` inside this directory
+
+Launch `firmware.ioc` and generate project files in current directory. Then
+type `tup` to (re)build the project.
 
 ## License
 
