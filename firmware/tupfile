@@ -16,7 +16,7 @@ FPU = -mfpu=fpv5-sp-d16
 FLOAT-ABI = -mfloat-abi=hard
 MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
 AS_DEFS =
-C_DEFS =  \
+STM_C_DEFS =  \
 	-DUSE_HAL_DRIVER \
 	-DSTM32F722xx
 C_INCLUDES =  \
@@ -28,7 +28,15 @@ C_INCLUDES =  \
 	-Isweet_leaf/inc
 LDSCRIPT = STM32F722ZETx_FLASH.ld
 LIBS = -lc -lm -lnosys
+
 LIBDIR =
+
+# Sweet Leaf stuff
+HSE_VALUE = 7093790
+
+SL_C_DEFS = -DHSE_VALUE=$(HSE_VALUE)
+
+C_DEFS = $(STM_C_DEFS) $(SL_C_DEFS)
 
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
 CFLAGS = $(MCU) $(CC_TARGET) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections -std=gnu11
@@ -37,7 +45,8 @@ LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BU
 # Compile all
 : foreach Drivers/STM32F7xx_HAL_Driver/Src/*.c |> ^ Building %f^ $(CC) $(CFLAGS) -c %f -o %o |> build/hal_%B.o
 : foreach Core/Src/*.c |> ^ Building %f^ $(CC) $(CFLAGS) -c %f -o %o |> build/core_%B.o
-: foreach sweet_leaf/src/*.c |> ^ Building %f^ $(CC) $(CFLAGS) -c %f -o %o |> build/sl_%B.o
+: foreach sweet_leaf/src/sweet_leaf/*.c |> ^ Building %f^ $(CC) $(CFLAGS) -c %f -o %o |> build/sl_%B.o
+: foreach sweet_leaf/src/printf/*.c |> ^ Building %f^ $(CC) $(CFLAGS) -c %f -o %o |> build/printf_%B.o
 : foreach *.s |> ^ Building %f^ $(CC) $(ASLAGS) -c %f -o %o |> build/startup_%B.o
 
 # Link all

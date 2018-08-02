@@ -13,6 +13,7 @@ Makefile
 
 # There's entry for SL's code
 !Core/Src/main.c
+!Core/Inc/main.h
 
 # Generated stuff
 bin
