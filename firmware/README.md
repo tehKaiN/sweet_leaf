@@ -106,7 +106,7 @@ Pins:
 
 - D0-D15 - data bus
 - A0 - A23 - address bus
-- CLK - external clock in
+- CLK - external clock in - don't level shift, connect directly
 - LSEN - Level Shifter Enable
 
 ## License

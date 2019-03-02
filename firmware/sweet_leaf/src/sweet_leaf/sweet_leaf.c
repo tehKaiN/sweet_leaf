@@ -153,14 +153,13 @@ void slMain(void) {
 		bool isSwitch = HAL_GPIO_ReadPin(gpioBtn_GPIO_Port, gpioBtn_Pin);
 
 		if(isSwitch && !wasSwitch) {
-			HAL_GPIO_WritePin(
-				gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 1
-			);
+			HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 1);
 			if(clockToExternal()) {
 				logPrintf("clock to external: success, clock: %u\r\n", SystemCoreClock);
 			}
 			else {
 				clockToInternal();
+				HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 0);
 				logPrintf("ERR: Clock to external\r\n");
 			}
 		}
