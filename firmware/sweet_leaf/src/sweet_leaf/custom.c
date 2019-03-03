@@ -7,7 +7,7 @@
 // https://www.amigacoding.com/index.php/Amiga_memory_map
 
 // This is where Amiga address space gets mapped. 4 * 64MB.
-#define STM_MEM_BANK_1 0x6FFFffff
+#define STM_MEM_BANK_1 0x60000000
 #define CUSTOM_OFFSET 0xDF0000
 
 tCustom *g_pCustom = (tCustom*)(STM_MEM_BANK_1 + CUSTOM_OFFSET);

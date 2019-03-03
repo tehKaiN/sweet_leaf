@@ -70,6 +70,7 @@ tPinPort NE = {GPIOD, GPIO_PIN_7};
 tPinPort NL = {GPIOB, GPIO_PIN_7};
 tPinPort NBL0 = {GPIOE, GPIO_PIN_0};
 tPinPort NBL1 = {GPIOE, GPIO_PIN_1};
+tPinPort BERR = {GPIOC, GPIO_PIN_8};
 
 void initInput(tPinPort sPinPort) {
   GPIO_InitTypeDef GPIO_InitStruct;
@@ -88,11 +89,11 @@ void initOutput(tPinPort sPinPort) {
 	HAL_GPIO_Init(sPinPort.pPort, &GPIO_InitStruct);
 }
 
-void set(tPinPort sPinPort, bool isHigh) {
+void pinSet(tPinPort sPinPort, bool isHigh) {
 	HAL_GPIO_WritePin(sPinPort.pPort, sPinPort.ulPin, isHigh);
 }
 
-bool get(tPinPort sPinPort) {
+bool pinGet(tPinPort sPinPort) {
 	return HAL_GPIO_ReadPin(sPinPort.pPort, sPinPort.ulPin);
 }
 
@@ -117,50 +118,66 @@ void pseudoMemInit(void) {
 	initOutput(NBL0);
 	initOutput(NBL1);
 	initInput(NWAIT);
+	initInput(BERR);
 }
 
 uint16_t pseudoMemRead(uint32_t ulAddr) {
-	set(NE, 1);
-	set(NWE, 1);
-	set(NOE, 1);
+	pinSet(NE, 1);
+	pinSet(NWE, 1);
+	pinSet(NOE, 1);
 
 	for(uint8_t i = 0; i < 24; ++i) {
-		set(A[i], ulAddr & 1);
+		pinSet(A[i], ulAddr & 1);
 		ulAddr >>= 1;
 	}
-	set(NBL0, 0);
-	set(NBL1, 0);
-	set(NE, 0);
+	pinSet(NBL0, 0);
+	pinSet(NBL1, 0);
+	pinSet(NE, 0);
 
-	while(get(NWAIT)) { }
+	while(pinGet(NWAIT) == false) { }
 
 	uint16_t uwResult = 0;
 	for(uint8_t i = 16; i--;) {
 		uwResult <<= 1;
-		uwResult |= get(D[i]);
+		uwResult |= pinGet(D[i]);
 	}
 
-	set(NE, 1);
-	set(NWE, 1);
-	set(NOE, 1);
+	pinSet(NE, 1);
+	pinSet(NWE, 1);
+	pinSet(NOE, 1);
+	return uwResult;
 }
 
 __attribute__((noreturn))
 void slMain(void) {
 	logPrintf("init, clock: %u\r\n", SystemCoreClock);
 	bool wasSwitch = 0;
+	bool isAmiOnline = false;
 	while(1) {
 		bool isSwitch = HAL_GPIO_ReadPin(gpioBtn_GPIO_Port, gpioBtn_Pin);
 
 		if(isSwitch && !wasSwitch) {
-			HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 1);
-			if(clockToExternal()) {
-				logPrintf("clock to external: success, clock: %u\r\n", SystemCoreClock);
+			if(!isAmiOnline) {
+				HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 1);
+				if(clockToExternal()) {
+					logPrintf("clock to external: success, clock: %u\r\n", SystemCoreClock);
+					isAmiOnline = true;
+				}
+				else {
+					clockToInternal();
+					HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 0);
+					logPrintf("ERR: Clock to external\r\n");
+					isAmiOnline = false;
+				}
 			}
 			else {
-				clockToInternal();
-				HAL_GPIO_WritePin(gpioShifterEnable_GPIO_Port, gpioShifterEnable_Pin, 0);
-				logPrintf("ERR: Clock to external\r\n");
+				logPrintf("BERR: %d\r\n", pinGet(BERR));
+				// const uint32_t ulStartAddr = 0xFC0000;
+				const uint32_t ulStartAddr = 0x000000;
+				for(uint32_t ulAddr = ulStartAddr; ulAddr < ulStartAddr + 16; ulAddr += 2) {
+					logPrintf("%06lX: %4X\r\n", ulAddr, pseudoMemRead(ulAddr));
+					logPrintf("BERR: %d\r\n", pinGet(BERR));
+				}
 			}
 		}
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);

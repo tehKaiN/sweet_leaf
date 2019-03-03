@@ -65,7 +65,7 @@ Outer pins (morpho connector) - table 21., page 70:
 
 ``` plain
                CN11                            CN12
- LSEN - PC10   1 2   PC11                PC9   1 2   PC8
+ LSEN - PC10   1 2   PC11                PC9   1 2   PC8 - BERR
         PC12   3 4   PD2                 PB8   3 4   PC6
          VDD   5 6   E5V                 PB9   5 6   PC5
         BOOT   7 8   GND                AVDD   7 8   U5V
