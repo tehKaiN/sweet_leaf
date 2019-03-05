@@ -10,15 +10,20 @@ bool clockToExternal(void) {
 	// so I've temporarily generated Cube project with HSE as main source
 	// and copied its SystemClock_Config() here
   HAL_RCC_DeInit();
+  HAL_PWR_EnableBkUpAccess();
 	__HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
   RCC_OscInitTypeDef sOscInit;
-  sOscInit.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+  sOscInit.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   sOscInit.HSEState = RCC_HSE_BYPASS;
+  sOscInit.PLL.PLLState = RCC_PLL_ON;
+  sOscInit.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  sOscInit.PLL.PLLM = 7;
+  sOscInit.PLL.PLLN = 320;
+  sOscInit.PLL.PLLP = RCC_PLLP_DIV2;
+  sOscInit.PLL.PLLQ = 9;
   sOscInit.HSIState = RCC_HSI_ON;
-  sOscInit.HSICalibrationValue = 16;
-  sOscInit.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&sOscInit) != HAL_OK)
   {
     return false;
@@ -28,12 +33,12 @@ bool clockToExternal(void) {
   sClkInit.ClockType =
 		RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
 		RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-  sClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+  sClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   sClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  sClkInit.APB1CLKDivider = RCC_HCLK_DIV1;
-  sClkInit.APB2CLKDivider = RCC_HCLK_DIV1;
+  sClkInit.APB1CLKDivider = RCC_HCLK_DIV4;
+  sClkInit.APB2CLKDivider = RCC_HCLK_DIV4;
 
-  if (HAL_RCC_ClockConfig(&sClkInit, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&sClkInit, FLASH_LATENCY_5) != HAL_OK)
   {
     return false;
   }

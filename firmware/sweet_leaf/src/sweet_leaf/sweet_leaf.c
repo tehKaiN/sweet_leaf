@@ -9,16 +9,12 @@
 #include <main.h>
 #include <sweet_leaf/clock.h>
 #include <sweet_leaf/log.h>
+#include <sweet_leaf/pin.h>
 
 // TODO submodule
 // https://github.com/mpaland/printf
 
-typedef struct _tPinPort {
-	GPIO_TypeDef *pPort;
-	uint32_t ulPin;
-} tPinPort;
-
-tPinPort D[16] = {
+tPin D[16] = {
 	{GPIOD, GPIO_PIN_14},
 	{GPIOD, GPIO_PIN_15},
 	{GPIOD, GPIO_PIN_0},
@@ -36,7 +32,7 @@ tPinPort D[16] = {
 	{GPIOD, GPIO_PIN_9},
 	{GPIOD, GPIO_PIN_10}
 };
-tPinPort A[24] = {
+tPin A[24] = {
 	{GPIOF, GPIO_PIN_0},
 	{GPIOF, GPIO_PIN_1},
 	{GPIOF, GPIO_PIN_2},
@@ -63,39 +59,14 @@ tPinPort A[24] = {
 	{GPIOE, GPIO_PIN_2}
 };
 
-tPinPort NWAIT = {GPIOD, GPIO_PIN_6};
-tPinPort NOE = {GPIOD, GPIO_PIN_4};
-tPinPort NWE = {GPIOD, GPIO_PIN_5};
-tPinPort NE = {GPIOD, GPIO_PIN_7};
-tPinPort NL = {GPIOB, GPIO_PIN_7};
-tPinPort NBL0 = {GPIOE, GPIO_PIN_0};
-tPinPort NBL1 = {GPIOE, GPIO_PIN_1};
-tPinPort BERR = {GPIOC, GPIO_PIN_8};
-
-void initInput(tPinPort sPinPort) {
-  GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.Pin = sPinPort.ulPin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-	HAL_GPIO_Init(sPinPort.pPort, &GPIO_InitStruct);
-}
-
-void initOutput(tPinPort sPinPort) {
-  GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.Pin = sPinPort.ulPin;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(sPinPort.pPort, &GPIO_InitStruct);
-}
-
-void pinSet(tPinPort sPinPort, bool isHigh) {
-	HAL_GPIO_WritePin(sPinPort.pPort, sPinPort.ulPin, isHigh);
-}
-
-bool pinGet(tPinPort sPinPort) {
-	return HAL_GPIO_ReadPin(sPinPort.pPort, sPinPort.ulPin);
-}
+tPin NWAIT = {GPIOD, GPIO_PIN_6};
+tPin NOE = {GPIOD, GPIO_PIN_4};
+tPin NWE = {GPIOD, GPIO_PIN_5};
+tPin NE = {GPIOD, GPIO_PIN_7};
+tPin NL = {GPIOB, GPIO_PIN_7};
+tPin NBL0 = {GPIOE, GPIO_PIN_0};
+tPin NBL1 = {GPIOE, GPIO_PIN_1};
+tPin BERR = {GPIOC, GPIO_PIN_8};
 
 void pseudoMemInit(void) {
 
@@ -103,28 +74,35 @@ void pseudoMemInit(void) {
 
 	// Data
 	for(uint8_t i = 0; i < 16; ++i) {
-		initInput(D[i]);
+		pinInit(D[i], false);
 	}
 
 	// Addr
 	for(uint8_t i = 0; i < 24; ++i) {
-		initOutput(A[i]);
+		pinInit(A[i], true);
 	}
 
 	// /OE, /WE, /E, /BL0, /BL1, /WAIT
-	initOutput(NOE);
-	initOutput(NWE);
-	initOutput(NE);
-	initOutput(NBL0);
-	initOutput(NBL1);
-	initInput(NWAIT);
-	initInput(BERR);
+	pinInit(NE, true);
+	pinSet(NE, 1);
+
+	pinInit(NOE, true);
+	pinSet(NOE, 1);
+
+	pinInit(NWE, true);
+	pinSet(NWE, 1);
+
+	pinInit(NBL0, true);
+	pinSet(NBL0, 1);
+
+	pinInit(NBL1, true);
+	pinSet(NBL1, 1);
+
+	pinInit(NWAIT, false);
+	pinInit(BERR, false);
 }
 
 uint16_t pseudoMemRead(uint32_t ulAddr) {
-	pinSet(NE, 1);
-	pinSet(NWE, 1);
-	pinSet(NOE, 1);
 
 	for(uint8_t i = 0; i < 24; ++i) {
 		pinSet(A[i], ulAddr & 1);
@@ -134,7 +112,8 @@ uint16_t pseudoMemRead(uint32_t ulAddr) {
 	pinSet(NBL1, 0);
 	pinSet(NE, 0);
 
-	while(pinGet(NWAIT) == false) { }
+	bool wasWait = false;
+	while(pinGet(NWAIT) == true) {wasWait = true;}
 
 	uint16_t uwResult = 0;
 	for(uint8_t i = 16; i--;) {
@@ -143,8 +122,14 @@ uint16_t pseudoMemRead(uint32_t ulAddr) {
 	}
 
 	pinSet(NE, 1);
+	pinSet(NBL0, 1);
+	pinSet(NBL1, 1);
 	pinSet(NWE, 1);
 	pinSet(NOE, 1);
+	while(pinGet(NWAIT) == false) {wasWait = true;}
+	if(wasWait) {
+		logPrintf("WAS WAIT!\r\n");
+	}
 	return uwResult;
 }
 
@@ -162,6 +147,7 @@ void slMain(void) {
 				if(clockToExternal()) {
 					logPrintf("clock to external: success, clock: %u\r\n", SystemCoreClock);
 					isAmiOnline = true;
+					pseudoMemInit();
 				}
 				else {
 					clockToInternal();
@@ -171,13 +157,22 @@ void slMain(void) {
 				}
 			}
 			else {
-				logPrintf("BERR: %d\r\n", pinGet(BERR));
-				// const uint32_t ulStartAddr = 0xFC0000;
-				const uint32_t ulStartAddr = 0x000000;
-				for(uint32_t ulAddr = ulStartAddr; ulAddr < ulStartAddr + 16; ulAddr += 2) {
-					logPrintf("%06lX: %4X\r\n", ulAddr, pseudoMemRead(ulAddr));
-					logPrintf("BERR: %d\r\n", pinGet(BERR));
+				// logPrintf("BERR: %d\r\n", pinGet(BERR));
+				logPrintf("================Start read\r\n");
+				const uint32_t ulStartAddr = 0xFC0000;
+				// const uint32_t ulStartAddr = 0x000000;
+				uint16_t pRef[6] = {0x1111, 0x4EF9, 0x00FC, 0x00D2, 0x0000, 0xFFFF};
+				uint16_t pRead[6] = {0x0000};
+				for(uint8_t i = 0; i < 6; ++i) {
+					uint32_t ulAddr = ulStartAddr + i*2;
+					pRead[i] = pseudoMemRead(ulAddr);
+					logPrintf(
+						"%06lX: %04X vs %04X, diff %04X\r\n",
+						ulAddr, pRead[i], pRef[i], (pRead[i] ^ pRef[i]) & pRead[i]
+					);
+					// logPrintf("BERR: %d\r\n", pinGet(BERR));
 				}
+				logPrintf("================End read\r\n");
 			}
 		}
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
