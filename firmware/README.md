@@ -102,18 +102,21 @@ NWAIT -  PD6  43 44  PG3  - BA13        PA12  43 44  PE7  - BD4
  BD14 -  PD9  69 70  PG11        BA14 -  PG4  69 70  PG6
 ```
 
+**NOTE:** Be sure to desolder SB5 & SB6 bridges since they connect ST-LINK's
+UART to PD8 & PD9.
+
 Pins:
 
 - BD0-BD15 - data bus
 - BA0 - BA23 - address bus
-- CLK - external clock in - don't level shift, connect directly
+- CLK - external clock in - don't level shift since it's 2V, connect directly
 - LSEN - Level Shifter Enable
-- NBL0..1 - Equivalent of LDS/UDS
-- NL
-- NWAIT - Equivalent of DTACK
-- NOE -
-- NWE
-- NE1 - enable pin, equivalent of AS
+- NBL0..1 - Equivalent of `LDS`/`UDS`
+- NL -
+- NWAIT - Equivalent of `DTACK`
+- NOE - unused on 68k bus
+- NWE - Equivalent of `R/W`
+- NE1 - enable pin, equivalent of `AS`
 
 ## License
 
